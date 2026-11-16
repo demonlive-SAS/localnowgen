@@ -1,0 +1,48 @@
+name: Generate LocalNow Playlist and EPG
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 4 hours, at minute 45 UTC (00:45, 04:45, 08:45, 12:45, 16:45, 20:45)
+    - cron: '45 */4 * * *'
+
+concurrency:
+  group: update-playlist
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x' # latest stable Python 3
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip -r requirements.txt
+
+      - name: Generate playlist
+        run: python generate_playlist.py
+
+      - name: Generate EPG
+        run: python generate_epg.py
+
+      - name: Commit and push playlist and EPG
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          branch: main
+          commit_options: '--no-verify'
+          push_options: '--force'
+          status_options: '--untracked-files=no'
+          commit_message: "Automated playlist and EPG update"
+          file_pattern: "localnow.m3u epg.xml"
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_author: "GitHub Actions Bot <github-actions[bot]@users.noreply.github.com>"
